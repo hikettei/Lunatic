@@ -326,8 +326,4 @@ def flatten_buckets(buckets: List, nsplits: int):
         gather_buckets([b.right_node for b in bucks], depth=depth+1)
         
     gather_buckets(buckets)
-    print(split_dim)
-    print(threshold)
-    print(alpha)
-    print(beta)
     return split_dim.reshape(-1), threshold.reshape(-1), alpha.reshape(-1), beta.reshape(-1)

@@ -20,6 +20,10 @@ from .hash_function_helper import (
     flatten_buckets
     )
 
+from .cffi_utils import (
+    maddness_encode
+)
+
 def train_encoder(A_offline: np.ndarray,
                   C:int = 16,
                   nsplits:int = 4,
@@ -44,7 +48,8 @@ def train_encoder(A_offline: np.ndarray,
     msv_err  = np.square(X_error).mean()
 
     print(f"MSV_Orig / MSV_Err: {msv_orig / msv_err}")
-    flatten_buckets(buckets, nsplits)
+    dims, vals, scals, offsets = flatten_buckets(buckets, nsplits)
+    maddness_encode(A_offline, dims, vals, scals, offsets, 16)
 
     
     
