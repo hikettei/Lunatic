@@ -171,9 +171,6 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
     def left_idx(self):
         return self.idx * 2
 
-    def flatten_inferior(self):
-        pass
-
     def col_variances(self, original_mat):
         """
         The method col_variances find the variances among rows, returning [1, D] matrix storing the result.
@@ -292,3 +289,45 @@ def _compute_optimal_val_splits(bucket, subspace, dim):
     best_val = (col[sort_idx[best_idx]] + col[sort_idx[next_idx]]) / 2
 
     return best_val, sses[best_idx]
+
+
+def flatten_buckets(buckets: List, nsplits: int):
+    """
+
+    """
+    
+    buckets_per_subspace = 0
+    for i in range(nsplits):
+        buckets_per_subspace += 2**i
+
+    total_buckets = buckets_per_subspace * len(buckets)
+    
+
+    # (size of protos, buckets_per_subspace)
+    split_dim = np.zeros(total_buckets, np.int32).reshape((-1, buckets_per_subspace))
+    threshold = np.zeros(total_buckets, np.int8).reshape((-1, buckets_per_subspace))
+    alpha = np.zeros(total_buckets, np.float32).reshape((-1, buckets_per_subspace))
+    beta = np.zeros(total_buckets, np.float32).reshape((-1, buckets_per_subspace))
+
+    def gather_buckets(bucks, depth=0):
+        for i, b in enumerate(bucks):
+            if b is None:
+                return
+            n = b.idx + 2**depth -1
+            split_dim[i, n] = b.split_dim
+            threshold[i, n] = b.threshold_q
+            alpha[i, n]     = b.alpha
+            beta[i, n]      = b.beta
+
+        if depth+1 == nsplits:
+            return
+            
+        gather_buckets([b.left_node for b in bucks], depth=depth+1)
+        gather_buckets([b.right_node for b in bucks], depth=depth+1)
+        
+    gather_buckets(buckets)
+    print(split_dim)
+    print(threshold)
+    print(alpha)
+    print(beta)
+    return split_dim.reshape(-1), threshold.reshape(-1), alpha.reshape(-1), beta.reshape(-1)

@@ -16,7 +16,8 @@ import os, resource
 from typing import Any, List, Optional, Tuple, Union
 
 from .hash_function_helper import (
-    create_bucket_toplevel
+    create_bucket_toplevel,
+    flatten_buckets
     )
 
 def train_encoder(A_offline: np.ndarray,
@@ -37,7 +38,17 @@ def train_encoder(A_offline: np.ndarray,
     Output:
         pass
     """
-    print(init_and_learn_hash_function(A_offline, 16, 4))
+    X_error, buckets, prototypes = init_and_learn_hash_function(A_offline, C, nsplits)
+
+    msv_orig = np.square(A_offline).mean()
+    msv_err  = np.square(X_error).mean()
+
+    print(f"MSV_Orig / MSV_Err: {msv_orig / msv_err}")
+    flatten_buckets(buckets, nsplits)
+
+    
+    
+    
 
 def init_and_learn_hash_function(A_offline: np.ndarray,
                                  C:int,
@@ -70,14 +81,14 @@ def init_and_learn_hash_function(A_offline: np.ndarray,
         tree_top, loss = _learn_binary_tree_splits(use_X_error, nsplits)
 
         if verbose:
-            print(loss)
+            print(f"Loss: {loss}")
 
         centroid.fill(0.0)
 
         tree_top.update_centroids(c//STEP, idxs, centroid, all_prototypes, X_error, use_X)
         buckets.append(tree_top)
 
-    return buckets, all_prototypes
+    return X_error, buckets, all_prototypes
 
     
 
@@ -127,5 +138,5 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
     # Compute Loss
     col_losses.fill(0.0)
     binary_tree_top.sumup_col_sum_sqs(col_losses, subspace)
-    
+
     return (binary_tree_top, col_losses.mean())
