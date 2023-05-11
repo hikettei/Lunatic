@@ -231,7 +231,7 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
             centroid.fill(0.0)
             centroid[idxs] = X_orig[np.asarray(self.indices)].sum(axis=0) / max(1,  self.N)
 
-            X_error[np.asarray(self.indices), :] -= centroid
+            X_error[np.asarray(self.indices)] -= centroid
             all_protos[c, self.idx] = centroid
 
             if self.left_node is not None and self.right_node is not None:

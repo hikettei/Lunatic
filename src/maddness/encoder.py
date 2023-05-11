@@ -39,7 +39,7 @@ def train_encoder(A_offline: np.ndarray,
     """
     print(init_and_learn_hash_function(A_offline, 16, 4))
 
-def init_and_learn_hash_function(subspace: np.ndarray,
+def init_and_learn_hash_function(A_offline: np.ndarray,
                                  C:int,
                                  nsplits:int,
                                  verbose=True):
@@ -48,19 +48,18 @@ def init_and_learn_hash_function(subspace: np.ndarray,
     """
     
     K = 2 ** nsplits
-    N, D = subspace.shape
+    N, D = A_offline.shape
+    STEP = D // C #TODO: Add Assertions
     
-    X       = subspace.astype(np.float32)
-    X_error = subspace.copy().astype(np.float32)    
+    X       = A_offline.astype(np.float32)
+    X_error = A_offline.copy().astype(np.float32)    
 
     all_prototypes = np.zeros((C, K, D), np.float32)
     centroid = np.zeros(D, np.float32)
 
-    STEP = D // C #TODO: Add Assertions
-
     buckets = []
 
-    for c in range(0, C, STEP):
+    for c in range(0, D, STEP):
         start_idx, end_idx = c, c+STEP
         idxs = np.arange(start_idx, end_idx)
 
@@ -75,11 +74,10 @@ def init_and_learn_hash_function(subspace: np.ndarray,
 
         centroid.fill(0.0)
 
-        tree_top.update_centroids(c, idxs, centroid, all_prototypes, X_error, use_X)
+        tree_top.update_centroids(c//STEP, idxs, centroid, all_prototypes, X_error, use_X)
         buckets.append(tree_top)
 
     return buckets, all_prototypes
-
 
     
 
@@ -101,7 +99,7 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
     subspace = subspace.astype(np.float32)
     
     binary_tree_top  = create_bucket_toplevel(N)
-    col_losses      = np.zeros([STEP], np.float32)
+    col_losses       = np.zeros(STEP, np.float32)
 
 
     for nth in range(nsplits):
