@@ -14,6 +14,7 @@ import numpy as np
 import numba
 import os, resource
 from typing import Any, List, Optional, Tuple, Union
+from sklearn import linear_model
 
 from .hash_function_helper import (
     create_bucket_toplevel,
@@ -21,14 +22,18 @@ from .hash_function_helper import (
     )
 
 from .cffi_utils import (
-    maddness_encode
+    maddness_encode,
+    maddness_lut
 )
+
+from .utils import sparsify_encoded_A
 
 def train_encoder(A_offline: np.ndarray,
                   C:int = 16,
                   nsplits:int = 4,
                   verbose=True,
-                  optimize_prototypes=True):
+                  optimize_prototypes=True,
+                  lamda=1.0):
     """
     The function train_encoder obtains following parameters by A_offline:
     1. Binary-Hasing-Tree for each subspace.
@@ -48,12 +53,21 @@ def train_encoder(A_offline: np.ndarray,
     msv_err  = np.square(X_error).mean()
 
     print(f"MSV_Orig / MSV_Err: {msv_orig / msv_err}")
-    dims, vals, scals, offsets = flatten_buckets(buckets, nsplits)
-    maddness_encode(A_offline, dims, vals, scals, offsets, 16)
 
-    
-    
-    
+    if optimize_prototypes:
+        dims, vals, scals, offsets = flatten_buckets(buckets, nsplits)
+        a_enc = maddness_encode(A_offline.reshape(A_offline.shape),
+                                dims, vals, scals, offsets, 2**nsplits, add_offsets=False)
+        a_onehot = sparsify_encoded_A(a_enc, 2**nsplits)
+        est = linear_model.Ridge(
+            fit_intercept=False, alpha=lamda, solver="auto", copy_X=False
+        )
+        est.fit(a_onehot, X_error)
+        w = est.coef_.T
+        delta = w.reshape((C, 2**nsplits, A_offline.shape[1]))
+        prototypes += delta
+        print(prototypes)
+    return buckets, prototypes
 
 def init_and_learn_hash_function(A_offline: np.ndarray,
                                  C:int,

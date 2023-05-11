@@ -56,7 +56,7 @@ def convert_to_cpp_float(arr):
 
 # ncodebooks=16
 def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_offsets=True):
-    out = np.zeros((X.shape[0], ncodebooks), dtype=np.int8)
+    out = np.ndarray((X.shape[0], ncodebooks), dtype=np.int8, order="F")
     LIBMITHRAL_STATIC.mithral_encode_fp32_t(convert_to_cpp_float(X),
                                             X.shape[0],
                                             X.shape[1],
@@ -69,5 +69,21 @@ def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_of
     if add_offsets:
         offsets = np.arange(0, ncodebooks) * ncodebooks
         out = out.astype(np.int32) + offsets
-    print(out)
     return out
+
+def maddness_lut(B, all_prototypes, C, K):
+    nrows, ncols = B.shape
+    out     = np.ndarray((C, K, ncols), dtype=np.uint8, order="F")
+    tmp_f32 = np.ndarray((C, K, ncols), dtype=np.float32, order="F")
+    offset_sum = np.ndarray(1, dtype=np.float32)
+    scale_sum  = np.ndarray(1, dtype=np.float32)
+    LIBMITHRAL_STATIC.mithral_lut_fp32_t(convert_to_cpp_float(B),
+                                         nrows,
+                                         ncols,
+                                         K,
+                                         convert_to_cpp_float(all_prototypes),
+                                         convert_to_cpp_float(offset_sum),
+                                         convert_to_cpp_float(scale_sum),
+                                         convert_to_cpp_float(tmp_f32),
+                                         convert_to_cpp_uint8(out))
+    return out, offset_sum[0], scale_sum[0]

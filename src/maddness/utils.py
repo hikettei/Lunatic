@@ -52,7 +52,7 @@ def sparsify_encoded_A(A_encoded, K):
     N, C = A_encoded.shape
     D    = C * K
 
-    out = np.array([N, D], np.int8)
+    out = np.zeros((N, D), np.int8)
 
     for n in range(N):
         for c in range(C):
