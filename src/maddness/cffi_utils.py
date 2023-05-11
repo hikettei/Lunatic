@@ -55,7 +55,7 @@ def convert_to_cpp_float(arr):
     return ffi.cast("float*", arr.ctypes.data)
 
 # ncodebooks=16
-def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks):
+def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_offsets=True):
     out = np.zeros((X.shape[0], ncodebooks), dtype=np.int8)
     LIBMITHRAL_STATIC.mithral_encode_fp32_t(convert_to_cpp_float(X),
                                             X.shape[0],
@@ -66,4 +66,8 @@ def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks):
                                             convert_to_cpp_float(offsets),
                                             ncodebooks,
                                             convert_to_cpp_uint8(out))
+    if add_offsets:
+        offsets = np.arange(0, ncodebooks) * ncodebooks
+        out = out.astype(np.int32) + offsets
+    print(out)
     return out
