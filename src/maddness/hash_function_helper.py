@@ -79,16 +79,45 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
 
         return None
 
-    def optimize_splits(self, subspace, dim):
+    def optimize_splits(self, subspace, dim, nth_split):
         """
 
         """
-        jurisdicitions = subspace[self.indices, :]
+
+        def explore(bucket):
+            if bucket.tree_level <= nth_split:
+                bucket.optimize_splits(subspace, dim, nth_split)
+
+        def update_indices(left_indices, right_indices):
+            if self.left_node is None and self.right_node is None:
+                self.left_node = Bucket(left_indices, 1 + self.tree_level, self.left_idx())
+                self.right_node = Bucket(left_indices, 1 + self.tree_level, self.right_idx())
+            else:
+                self.left_node.indices = left_indices
+                self.right_node.indices = right_indices
+                self.left_node.N = len(left_indices)
+                self.right_node.N = len(right_indices)
+                
+                explore(self.left_node)
+                explore(self.right_node)
 
         if self.N < 2:
-            return 0
+            # Copy of this bucket + Empty
+            update_indices(self.indices, [])
+        else:
+            indices = np.asarray(self.indices)
 
-        return 0
+            jurisdictions = subspace[indices, :]
+
+            mask = jurisdictions[:, dim] > self.threshold
+            not_mask = ~mask
+            
+            left_ids  = indices[not_mask]
+            right_ids = indices[mask]
+            update_indices(list(left_ids), list(right_ids))
+        return None
+    
+        
         
     
     def optimal_val_splits(self, subspace, loss_out, split_dim, dth):

@@ -81,7 +81,7 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
 
         binary_tree_top.optimize_thresholds(subspace, best_candidate_idx, best_trying_dim_idx)
         
-        binary_tree_top.optimize_splits()
+        binary_tree_top.optimize_splits(subspace, best_trying_dim_idx, nth)
 
     # Compute Loss
 
