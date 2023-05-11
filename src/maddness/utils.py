@@ -38,7 +38,7 @@ def cumulative_sses(X):
             cumsses[i, j] = cumX2_column[j] - (cumX_column[j] * meanX)
     return cumsses
 
-@numba.jit('u1[:, :](u1[:, :], int64)')
+#@numba.jit('u1[:, :](u1[:, :], int64)', nopython=False)
 def sparsify_encoded_A(A_encoded, K):
     """
     The function sparsify_encoded_A sparsify A_encoded.
@@ -60,4 +60,23 @@ def sparsify_encoded_A(A_encoded, K):
             dim_left  = (K * c) + code_left
             out[n, dim_left] = 1
     return out
+
+def learn_quantized_param(bucket, subspace, dim):
+    """
+    For details, see the original paper of Appendix B
+
+    Return:
+       (values quantized_threshold alpha beta)
+    """
+
+    x         = subspace[:, dim]
+    offset    = (np.min(x) + np.min(bucket.threshold_candidates)) / 2
+    upper_val = ((np.max(x) + np.max(bucket.threshold_candidates)) / 2) - offset
+
+    l = 254.0 / upper_val
+    scal = 2.0 ** int(np.log2(l))
+
+    threshold_quantized = (bucket.threshold - offset) * scal
+    
+    return np.clip(threshold_quantized, 0, 255).astype(np.int32), scal, offset
 

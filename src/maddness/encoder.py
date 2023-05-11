@@ -15,17 +15,17 @@ import numba
 import os, resource
 from typing import Any, List, Optional, Tuple, Union
 
-from hash_function_helper import (
+from .hash_function_helper import (
     create_bucket_toplevel
     )
 
-def maddness_training_encoder(A_offline: np.ndarray,
-                              C:int = 16,
-                              nsplits:int = 4,
-                              verbose=False,
-                              optimize_prototypes=True):
+def train_encoder(A_offline: np.ndarray,
+                  C:int = 16,
+                  nsplits:int = 4,
+                  verbose=False,
+                  optimize_prototypes=True):
     """
-    The function maddness_training_encoder obtains following parameters by A_offline:
+    The function train_encoder obtains following parameters by A_offline:
     1. Binary-Hasing-Tree for each subspace.
     2. Each Bucket's parameter (alpha, beta, split-dim, threshold).
 
@@ -37,7 +37,7 @@ def maddness_training_encoder(A_offline: np.ndarray,
     Output:
         pass
     """
-    pass
+    _learn_binary_tree_splits(A_offline, 4)
 
 
 def _learn_binary_tree_splits(subspace: np.ndarray,
@@ -48,7 +48,7 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
       nsplits - The depth of binary-tree
 
     Return:
-     (Buckets, all_prototypes)
+     (Buckets, Loss)
     """
 
     # aux
@@ -75,4 +75,14 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
             if early_stopping_p:
                 break
 
-        pass
+        # Optimizing Binary-Tree...
+        best_trying_dim_idx  = np.argmin(col_losses)
+        best_candidate_idx = try_dim_order[best_trying_dim_idx]
+
+        binary_tree_top.optimize_thresholds(subspace, best_candidate_idx, best_trying_dim_idx)
+        
+        binary_tree_top.optimize_splits()
+
+    # Compute Loss
+
+    return binary_tree_top

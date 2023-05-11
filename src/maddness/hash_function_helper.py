@@ -9,7 +9,10 @@ import numba
 import os, resource
 from typing import Any, List, Optional, Tuple, Union
 
-from utils import cumulative_sses
+from .utils import (
+    cumulative_sses,
+    learn_quantized_param
+)
 
 
 class Bucket:
@@ -48,9 +51,10 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         self.threshold_candidates = []
         
         self.split_dim = 0
-        self.threshold = 0
-        self.alpha = 0
-        self.beta  = 0
+        self.threshold = 0.0
+        self.threshold_q = 0
+        self.alpha = 0.0
+        self.beta  = 0.0
 
         self.tree_level = tree_level
         self.idx = idx
@@ -58,6 +62,35 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         self.right_node = None
         self.left_node  = None
 
+    def optimize_thresholds(self, subspace, best_candidate_idx, dim):
+        """
+
+        """
+        self.split_dim = dim
+        self.threshold = self.threshold_candidates[best_candidate_idx]
+        self.threshold_q, self.alpha, self.beta = learn_quantized_param(self, subspace, dim)
+        ## Reset Params
+        self.threshold_candidates = []
+
+        if self.right_node is not None:
+            self.right_node.optimize_thresholds(subspace, best_candidate_idx, dim)
+        if self.left_node is not None:
+            self.left_node.optimize_thresholds(subspace, best_candidate_idx, dim)
+
+        return None
+
+    def optimize_splits(self, subspace, dim):
+        """
+
+        """
+        jurisdicitions = subspace[self.indices, :]
+
+        if self.N < 2:
+            return 0
+
+        return 0
+        
+    
     def optimal_val_splits(self, subspace, loss_out, split_dim, dth):
         """
         Tests for the **all nodes** belonging to the bucket, the given split-dim to find out one minimizing loss.
@@ -104,15 +137,12 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         
 
     def right_idx(self):
-        pass
-
-    def left_idx(self):
-        pass
+        return self.idx * 2 + 1
     
-    def splits(self):
-        pass
+    def left_idx(self):
+        return self.idx * 2
 
-    def flatten(self):
+    def flatten_inferior(self):
         pass
 
     def col_variances(self, original_mat):
