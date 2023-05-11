@@ -56,7 +56,7 @@ def convert_to_cpp_float(arr):
 
 # ncodebooks=16
 def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_offsets=True):
-    out = np.ndarray((X.shape[0], ncodebooks), dtype=np.int8, order="F")
+    out = np.zeros((X.shape[0], ncodebooks), dtype=np.int8, order="F")
     LIBMITHRAL_STATIC.mithral_encode_fp32_t(convert_to_cpp_float(X),
                                             X.shape[0],
                                             X.shape[1],
@@ -72,18 +72,33 @@ def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_of
     return out
 
 def maddness_lut(B, all_prototypes, C, K):
-    nrows, ncols = B.shape
-    out     = np.ndarray((C, K, ncols), dtype=np.uint8, order="F")
-    tmp_f32 = np.ndarray((C, K, ncols), dtype=np.float32, order="F")
-    offset_sum = np.ndarray(1, dtype=np.float32)
-    scale_sum  = np.ndarray(1, dtype=np.float32)
+    ffi = FFI()
+    ncols, nrows = B.shape
+    out     = np.zeros((C, K, ncols), dtype=np.uint8, order="F")
+    tmp_f32 = np.zeros((C, K, ncols), dtype=np.float32, order="F")
+    offset_sum = ffi.new("float*", 0.0)
+    scale_sum  = ffi.new("float*", 0.0)
     LIBMITHRAL_STATIC.mithral_lut_fp32_t(convert_to_cpp_float(B),
-                                         nrows,
                                          ncols,
+                                         nrows,
                                          K,
                                          convert_to_cpp_float(all_prototypes),
-                                         convert_to_cpp_float(offset_sum),
-                                         convert_to_cpp_float(scale_sum),
+                                         offset_sum,
+                                         scale_sum,
                                          convert_to_cpp_float(tmp_f32),
                                          convert_to_cpp_uint8(out))
-    return out, offset_sum[0], scale_sum[0]
+    
+    return out, float(scale_sum[0]), float(offset_sum[0])
+
+def maddness_scan(A_enc, nsplits, N, luts):
+    """
+    A_enc ... [M, D]
+    """
+    A_enc = A_enc.reshape(A_enc.shape, order="F")
+    out_mat = np.zeros((N, A_enc.shape[0]), order="F").astype(np.uint8)
+    LIBMITHRAL_STATIC.mithral_scan_fp32_t(convert_to_cpp_uint8(A_enc),
+                                          2**nsplits,
+                                          A_enc.shape[0],
+                                          convert_to_cpp_uint8(luts),
+                                          convert_to_cpp_uint8(out_mat))
+    return out_mat
