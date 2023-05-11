@@ -222,6 +222,22 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
             self.left_node.sumup_col_sum_sqs(out, original_mat)
 
         return None
+
+    def update_centroids(self, c, idxs, centroid, all_protos, X_error, X_orig):
+        """
+
+        """
+        if len(self.indices):
+            centroid.fill(0.0)
+            centroid[idxs] = X_orig[np.asarray(self.indices)].sum(axis=0) / max(1,  self.N)
+
+            X_error[np.asarray(self.indices), :] -= centroid
+            all_protos[c, self.idx] = centroid
+
+            if self.left_node is not None and self.right_node is not None:
+
+                self.left_node.update_centroids(c, idxs, centroid, all_protos, X_error, X_orig)
+                self.right_node.update_centroids(c, idxs, centroid, all_protos, X_error, X_orig)
         
 def create_bucket_toplevel(N):
     """

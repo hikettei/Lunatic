@@ -22,7 +22,7 @@ from .hash_function_helper import (
 def train_encoder(A_offline: np.ndarray,
                   C:int = 16,
                   nsplits:int = 4,
-                  verbose=False,
+                  verbose=True,
                   optimize_prototypes=True):
     """
     The function train_encoder obtains following parameters by A_offline:
@@ -37,11 +37,54 @@ def train_encoder(A_offline: np.ndarray,
     Output:
         pass
     """
-    _learn_binary_tree_splits(A_offline, 4)
+    print(init_and_learn_hash_function(A_offline, 16, 4))
 
+def init_and_learn_hash_function(subspace: np.ndarray,
+                                 C:int,
+                                 nsplits:int,
+                                 verbose=True):
+    """
+
+    """
+    
+    K = 2 ** nsplits
+    N, D = subspace.shape
+    
+    X       = subspace.astype(np.float32)
+    X_error = subspace.copy().astype(np.float32)    
+
+    all_prototypes = np.zeros((C, K, D), np.float32)
+    centroid = np.zeros(D, np.float32)
+
+    STEP = D // C #TODO: Add Assertions
+
+    buckets = []
+
+    for c in range(0, C, STEP):
+        start_idx, end_idx = c, c+STEP
+        idxs = np.arange(start_idx, end_idx)
+
+        # Disjoint
+        use_X       = X[:, idxs]
+        use_X_error = X_error[:, idxs]
+
+        tree_top, loss = _learn_binary_tree_splits(use_X_error, nsplits)
+
+        if verbose:
+            print(loss)
+
+        centroid.fill(0.0)
+
+        tree_top.update_centroids(c, idxs, centroid, all_prototypes, X_error, use_X)
+        buckets.append(tree_top)
+
+    return buckets, all_prototypes
+
+
+    
 
 def _learn_binary_tree_splits(subspace: np.ndarray,
-                             nsplits:int):
+                              nsplits:int):
     """
 
     Parameters:
@@ -84,5 +127,7 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
         binary_tree_top.optimize_splits(subspace, best_trying_dim_idx, nth)
 
     # Compute Loss
-
-    return binary_tree_top
+    col_losses.fill(0.0)
+    binary_tree_top.sumup_col_sum_sqs(col_losses, subspace)
+    
+    return (binary_tree_top, col_losses.mean())
