@@ -39,7 +39,7 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
     Add: print-bucket
     """
     def __init__(self, indices, tree_level, idx):
-        self.indices    = indices
+        self.indices = indices
         
         self.N = len(self.indices)
         
@@ -75,19 +75,32 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         """
 
         def compute_on(bucket):
-            pass
+            best_val, best_loss = _compute_optimal_val_splits(bucket, subspace, split_dim)
+
+            loss_out[split_dim] += best_loss
+
+            # Storing results.
+            bucket.threshold_candidates.append(best_val)
+
+            # Judge early_stopping_p
+            if dth > 0 and loss_out[split_dim] >= np.min(loss_out[:dth]):
+                return True
+            else:
+                return False
+            
 
         def explore_bucket(bucket):
-            if bucket is not None:
-                return 0
-            return None
+            if bucket is None:
+                return False
+            else:
+                bucket.optimal_val_splits(subspace, loss_out, split_dim, dth)
 
         # Explore: the current bucket itself, and right/left side nodes.
         result1 = compute_on(self)
-        result2 = explore_bucket(self.right_node, subspace)
-        result3 = explore_bucket(self.left_node,  subspace)
+        result2 = explore_bucket(self.right_node)
+        result3 = explore_bucket(self.left_node)
 
-        return result1 or result2 or result3
+        return result1 and result2 and result3
         
 
     def right_idx(self):
@@ -179,7 +192,7 @@ def _compute_optimal_val_splits(bucket, subspace, dim):
     N, _ = subspace.shape
 
     # Sort by [:, dim].
-    sort_idx     = np.argsort(X[:, dim]) #'<
+    sort_idx     = np.argsort(subspace[:, dim]) #'<
     sort_idx_rev = sort_idx[::-1]
 
     X_sort     = subspace[sort_idx, :]
@@ -192,14 +205,14 @@ def _compute_optimal_val_splits(bucket, subspace, dim):
     
     sses_heads += sses_tails
 
-    sses_out = np.sum(sses_heads, axis=1)
+    sses = np.sum(sses_heads, axis=1)
 
     # Find out the best_idx, and second_idx
 
     best_idx = np.argmin(sses)
     next_idx = min(N - 1, best_idx + 1)
 
-    col = sort_idx[:, dim]
+    col = subspace[:, dim]
 
     best_val = (col[sort_idx[best_idx]] + col[sort_idx[next_idx]]) / 2
 

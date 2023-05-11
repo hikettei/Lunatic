@@ -55,6 +55,7 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
     K = 2**nsplits
     N, STEP = subspace.shape
 
+    subspace = subspace.astype(np.float32)
     
     binary_tree_top  = create_bucket_toplevel(N)
     col_losses      = np.zeros([STEP], np.float32)
@@ -65,14 +66,12 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
         binary_tree_top.sumup_col_sum_sqs(col_losses, subspace)
 
         # Determines a strategy for which rows to start it.
-        try_dim_order = np.argsort(col_losses)[::-1][
-            :check_x_dims
-        ]
+        try_dim_order = np.argsort(col_losses)[::-1]
 
         col_losses.fill(0.0)
 
         for dth, dim in enumerate(try_dim_order):
-            early_stopping_p = binary_tree_top.optimal_val_splits(subspace, dim, dth)
+            early_stopping_p = binary_tree_top.optimal_val_splits(subspace, col_losses, dim, dth)
             if early_stopping_p:
                 break
 
