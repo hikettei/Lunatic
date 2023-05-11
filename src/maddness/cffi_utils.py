@@ -66,5 +66,4 @@ def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks):
                                             convert_to_cpp_float(offsets),
                                             ncodebooks,
                                             convert_to_cpp_uint8(out))
-    print(out)
     return out
