@@ -1,3 +1,3 @@
-[submodule "third_party"]
-	path = third_party
+[submodule "third_parties/cl-xMatrix"]
+	path = third_parties/cl-xMatrix
 	url = git@github.com:hikettei/cl-xMatrix.git
