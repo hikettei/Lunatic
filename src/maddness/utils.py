@@ -80,3 +80,16 @@ def learn_quantized_param(bucket, subspace, dim):
     
     return np.clip(threshold_quantized, 0, 255).astype(np.int32), scal, offset
 
+@numba.jit()
+def _XW_encoded(A_enc, W, K=16):
+    N, C = A_enc.shape
+    _, M = W.shape
+
+    out = np.zeros((N, M), W.dtype)
+
+    encoded_shifted = A_enc + np.repeat(np.arange(C) * K, N).reshape(N, C)
+    for n in range(N):
+        for c in range(C):
+            out[n, :] += W[encoded_shifted[n, c], :]
+
+    return out

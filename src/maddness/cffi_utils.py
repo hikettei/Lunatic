@@ -45,9 +45,9 @@ def convert_to_cpp_float(arr):
     return ffi.cast("float*", arr.ctypes.data)
 
 # ncodebooks=16
-def maddness_encode(X, C, nsplits, splitdims, splitvals, scales, offsets, add_offsets=True):
+def maddness_encode(X, STEP, C, nsplits, splitdims, splitvals, scales, offsets, add_offsets=True):
     K = 2**nsplits
-    out = np.zeros((X.shape[0], K), dtype=np.uint8)
+    out = np.zeros((X.shape[0], STEP), dtype=np.uint8, order="C")
     LIBMITHRAL_STATIC.maddness_encode(convert_to_cpp_float(X),
                                       C,
                                       nsplits,
@@ -59,10 +59,10 @@ def maddness_encode(X, C, nsplits, splitdims, splitvals, scales, offsets, add_of
                                       convert_to_cpp_float(offsets),
                                       convert_to_cpp_uint8(out))
     if add_offsets:
-        ## Here, astype(np.uint8) may result in:  malloc: Incorrect checksum for freed object 0x7f850fdb3e00: probably modified after being freed.
-        pass#offsets = np.arange(0, K) * K
-        #out = out.astype(np.uint8) + offsets
-    return out
+        ## Here, astype(np.uint32) may result in:  malloc: Incorrect checksum for freed object 0x7f850fdb3e00: probably modified after being freed.
+        offsets = np.arange(0, K) * K
+        out = out.astype(np.uint8) + offsets
+    return np.ascontiguousarray(out)
 
 def maddness_lut(B, all_prototypes, C, K):
     ffi = FFI()

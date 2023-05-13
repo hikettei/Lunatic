@@ -185,10 +185,10 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
             #   ++--
             return np.zeros(original_mat.shape[1], np.float32)
 
-        jurisdictions = np.sum(original_mat[self.indices], axis=0)
+        jurisdictions = original_mat[self.indices]
 
-        sumX2 = np.square(jurisdictions)
-        sumX  = jurisdictions
+        sumX2 = np.sum(np.square(jurisdictions), axis=0)
+        sumX  = np.sum(jurisdictions, axis=0)
 
         E_X2  = sumX2 / self.N
         E_X   = sumX  / self.N
@@ -226,13 +226,13 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         """
         if len(self.indices):
             centroid.fill(0.0)
-            centroid[idxs] = X_orig[np.asarray(self.indices)].sum(axis=0) / max(1,  self.N)
+            centroid[idxs] = X_orig[np.asarray(self.indices)].astype(np.float64).mean(axis=0)
 
             X_error[np.asarray(self.indices)] -= centroid
-            all_protos[c, self.idx] = centroid
+            # Hash: Proto (C, K) -> np.ndarray(D)
+            all_protos[c, self.idx, :] = centroid
 
             if self.left_node is not None and self.right_node is not None:
-
                 self.left_node.update_centroids(c, idxs, centroid, all_protos, X_error, X_orig)
                 self.right_node.update_centroids(c, idxs, centroid, all_protos, X_error, X_orig)
         
@@ -289,44 +289,6 @@ def _compute_optimal_val_splits(bucket, subspace, dim):
     best_val = (col[sort_idx[best_idx]] + col[sort_idx[next_idx]]) / 2
 
     return best_val, sses[best_idx]
-
-# Fix it.
-def flatten_buckets1(buckets: List, nsplits: int):
-    """
-
-    """
-    
-    buckets_per_subspace = 0
-    for i in range(nsplits):
-        buckets_per_subspace += 2**i
-
-    total_buckets = buckets_per_subspace * len(buckets)
-    
-
-    # (size of protos, buckets_per_subspace)
-    split_dim = np.zeros(total_buckets, np.int32).reshape((-1, buckets_per_subspace))
-    threshold = np.zeros(total_buckets, np.int8).reshape((-1, buckets_per_subspace))
-    alpha = np.zeros(total_buckets, np.float32).reshape((-1, buckets_per_subspace))
-    beta = np.zeros(total_buckets, np.float32).reshape((-1, buckets_per_subspace))
-
-    def gather_buckets(bucks, depth=0):
-        for i, b in enumerate(bucks):
-            if b is None:
-                return
-            n = b.idx + 2**depth -1
-            split_dim[i, n] = b.split_dim
-            threshold[i, n] = b.threshold_q
-            alpha[i, n]     = b.alpha
-            beta[i, n]      = b.beta
-
-        if depth+1 == nsplits:
-            return
-            
-        gather_buckets([b.left_node for b in bucks], depth=depth+1)
-        gather_buckets([b.right_node for b in bucks], depth=depth+1)
-        
-    gather_buckets(buckets)
-    return split_dim.reshape(-1), threshold.reshape(-1), alpha.reshape(-1), beta.reshape(-1)
 
 def flatten_buckets(buckets: List, nsplits: int):
     """

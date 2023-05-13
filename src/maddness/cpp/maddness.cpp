@@ -120,6 +120,8 @@ static void maddness_encode_fp32_t(const float *X,
   __m256  current_vscales[nsplits];
   __m256  current_voffsets[nsplits];
 
+  assert(nrows % block_nrows == 0);
+
   
   int mtree_offset = 0;
   int STEP = ncols/C;

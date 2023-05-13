@@ -25,7 +25,10 @@ from .cffi_utils import (
     maddness_encode
 )
 
-from .utils import sparsify_encoded_A
+from .utils import (
+    sparsify_encoded_A,
+    _XW_encoded
+)
 
 def train_encoder(A_offline: np.ndarray,
                   C:int = 16,
@@ -55,7 +58,8 @@ def train_encoder(A_offline: np.ndarray,
 
     if optimize_prototypes:
         dims, vals, scals, offsets = flatten_buckets(buckets, nsplits)
-        a_enc = maddness_encode(A_offline, C, nsplits, dims, vals, scals, offsets, add_offsets=False)
+        a_enc = maddness_encode(A_offline, len(buckets), C, nsplits, dims, vals, scals, offsets, add_offsets=False)
+        print(a_enc)
         a_onehot = sparsify_encoded_A(a_enc, 2**nsplits)
         est = linear_model.Ridge(
             fit_intercept=False, alpha=lamda, solver="auto", copy_X=False
@@ -64,6 +68,12 @@ def train_encoder(A_offline: np.ndarray,
         w = est.coef_.T
         delta = w.reshape((C, 2**nsplits, A_offline.shape[1]))
         prototypes += delta
+
+        # check how much improve we got.
+        X_error -= _XW_encoded(a_enc, w)
+        mse_res = (X_error * X_error).mean()
+        print("X_error mse / X mse after lstsq: ", mse_res / msv_orig)
+        
     return buckets, prototypes
 
 def init_and_learn_hash_function(A_offline: np.ndarray,
