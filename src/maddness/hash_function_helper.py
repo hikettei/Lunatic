@@ -66,6 +66,7 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         """
 
         """
+
         self.split_dim = dim
         self.threshold = self.threshold_candidates[best_candidate_idx]
         self.threshold_q, self.alpha, self.beta = learn_quantized_param(self, subspace, dim)
@@ -305,20 +306,36 @@ def flatten_buckets(buckets: List, nsplits: int):
     alpha = np.zeros(total_buckets, np.float32)
     beta = np.zeros(total_buckets, np.float32)
     
-    def gather_buckets(buck, total_offset, local_offset=0):
-        split_dim[total_offset + local_offset] = buck.split_dim
-        threshold[total_offset + local_offset] = buck.threshold_q
-        alpha[total_offset + local_offset] = buck.alpha
-        beta[total_offset + local_offset] = buck.beta
+    def gather_buckets(buck, total_offset, idx=0):
+        split_dim[total_offset + idx] = buck.split_dim
+        threshold[total_offset + idx] = buck.threshold_q
+        alpha[total_offset + idx] = buck.alpha
+        beta[total_offset + idx] = buck.beta
         
-
-        def explore(sub_bucket):
-            if sub_bucket is not None:
-                gather_buckets(sub_bucket, total_offset, local_offset=sub_bucket.idx)
+        def explore(sub_bucket, b=0):
+            if sub_bucket.tree_level + 1 <= nsplits:
+                gather_buckets(sub_bucket, total_offset + 2**(sub_bucket.tree_level - 1), idx=2*idx+b)
                 
-        explore(buck.left_node)
-        explore(buck.right_node)
+        explore(buck.right_node, b=1)
+        explore(buck.left_node,  b=0)
 
-    [gather_buckets(buck, i*buckets_per_subspace) for i, buck in enumerate(buckets)]
-
+    [gather_buckets(buck, i*buckets_per_subspace, idx=0) for i, buck in enumerate(buckets)]
+    
     return split_dim, threshold, alpha, beta
+
+def print_bucket(bucket, sample_proto=None):
+    """
+
+    """
+    def print_bucket_col(b, indent=0):
+        out = ""
+        
+        for i in range(indent):
+            out += " "
+        out += f"<Bucket({b.idx}, {b.tree_level}) N={b.N} dim={b.split_dim} val={b.threshold}>"
+        print(out)
+        if b.left_node is not None:
+            print_bucket_col(b.left_node, indent=indent+4)
+        if b.right_node is not None:
+            print_bucket_col(b.right_node, indent=indent+4)
+    print_bucket_col(bucket)

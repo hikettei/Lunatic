@@ -30,6 +30,8 @@ from .utils import (
     _XW_encoded
 )
 
+
+# Dense -> Sparse
 def train_encoder(A_offline: np.ndarray,
                   C:int = 16,
                   nsplits:int = 4,
@@ -165,3 +167,4 @@ def _learn_binary_tree_splits(subspace: np.ndarray,
     binary_tree_top.sumup_col_sum_sqs(col_losses, subspace)
 
     return (binary_tree_top, col_losses.mean())
+

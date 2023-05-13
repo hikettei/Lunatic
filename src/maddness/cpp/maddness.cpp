@@ -115,13 +115,12 @@ static void maddness_encode_fp32_t(const float *X,
   const int64_t nblocks = ceil(nrows / (double)block_nrows);
   const int64_t total_buckets_per_tree = 2^nsplits;
   
-  const float *x_ptrs[nsplits];
-  __m256i current_vsplitval_luts[nsplits];
-  __m256  current_vscales[nsplits];
-  __m256  current_voffsets[nsplits];
+  const float *x_ptrs[total_buckets_per_tree];
+  __m256i current_vsplitval_luts[total_buckets_per_tree];
+  __m256  current_vscales[total_buckets_per_tree];
+  __m256  current_voffsets[total_buckets_per_tree];
 
   assert(nrows % block_nrows == 0);
-
   
   int mtree_offset = 0;
   int STEP = ncols/C;
@@ -129,37 +128,33 @@ static void maddness_encode_fp32_t(const float *X,
   // X.stride = [1, nrow]
   for (int cth=0;cth<C;cth++) {
     // Proceessing prototypes-wise: AA -> BB -> CC.
-    auto out_ptr = out + (nrows * cth); // out_ptr = out[:, C:]
-    
-    for (int tlevel=0;tlevel<nsplits;tlevel++) {
-      auto splitdim = splitdims[mtree_offset + cth]; // AA's splitdim (tlevel=0), BB's splitdim (tlevel=1), CC's splitdim (tlevel=2)...
-      
+    auto out_ptr = out + (STEP * cth); // out_ptr = out[:, C:]
+    mtree_offset = cth * total_buckets_per_tree;
+    for (int bucket_n=0;bucket_n<total_buckets_per_tree;bucket_n++) {
+      auto splitdim = splitdims[mtree_offset + bucket_n];
       splitdim += cth*STEP; // Add Offsets. {AABBCC}[n], n=cth*STEP + splitdim.
       
-      x_ptrs[tlevel] = X + (nrows * splitdim); // x_ptrs[tlevel] = X[:, splitdim].
+      x_ptrs[bucket_n] = X + splitdim; // x_ptrs[bucket_b] = X[:, splitdim].
 
-      auto splitval_ptr = splitvals + (total_buckets_per_tree * mtree_offset); // Increment ptr until reaches (mtree_offset)th Prototype's bucket-tree.
-      // Here, splitval_ptr = Bucket(0, 0), Bucket(0, 1), Bucket(1, 1), Bucket(0, 2), ...
+      auto splitval_ptr = splitvals + (mtree_offset + bucket_n); // Increment ptr until reaches (mtree_offset)th Prototype's bucket-tree.
+      // Here, splitval_ptr = {Bucket(0, 0)}, {Bucket(0, 1), Bucket(1, 1)}, {Bucket(1, 1), Bucket(0, 2), ...}
       
-      current_vsplitval_luts[tlevel] = _mm256_broadcastsi128_si256(load_si128i((const __m128i *)splitval_ptr));
-      
-      current_vscales[tlevel]  = _mm256_set1_ps(scales[mtree_offset + 2^tlevel-1]);  // The first bucket ptr of each level
-      current_voffsets[tlevel] = _mm256_set1_ps(offsets[mtree_offset + 2^tlevel-1]); // 
+      current_vsplitval_luts[bucket_n] = _mm256_broadcastsi128_si256(load_si128i((const __m128i *)splitval_ptr));
+      current_vscales[bucket_n]  = _mm256_set1_ps(scales[mtree_offset + bucket_n]);
+      current_voffsets[bucket_n] = _mm256_set1_ps(offsets[mtree_offset + bucket_n]); 
     }
-    mtree_offset += total_buckets_per_tree; // Increment ptr until Next Tree
 
     /*
       __m256 variables: current_XXX is now:
 
                           / length=nsplits \
       [Bucket(0, 0), Bucket(0, 1), Bucket(0, 2), Bucket(0, 3)] where Bucket(i, t) is bucket, t=tree_level, i=bucket_idx.
-      
     */
 
     for (int b=0;b<nblocks;b++) {
       __m256i group_idxs = _mm256_setzero_si256();
 #pragma unroll
-      for (int tlevel=0;tlevel<nsplits;tlevel++){
+      for (int tlevel=0;tlevel<total_buckets_per_tree;tlevel++) {
 	auto vscales   = current_vscales[tlevel];
 	auto voffsets  = current_voffsets[tlevel];
 	auto vsplitvals_lut = current_vsplitval_luts[tlevel];
@@ -177,12 +172,13 @@ static void maddness_encode_fp32_t(const float *X,
 	  // MaddnessHash, 2*idx
 	  group_idxs = _mm256_add_epi8(group_idxs, group_idxs);
 	}
+	
         group_idxs = _mm256_or_si256(group_idxs, masks_0_or_1);
-	group_idxs = _mm256_permutevar8x32_epi32(group_idxs, _mm256_setr_epi32(0, 4, 1, 5, 2, 6, 3, 7));
-
-	_mm256_storeu_si256((__m256i *)out_ptr, group_idxs);
-	out_ptr += block_nrows;
       }
+      group_idxs = _mm256_permutevar8x32_epi32(group_idxs, _mm256_setr_epi32(0, 4, 1, 5, 2, 6, 3, 7));
+
+      _mm256_storeu_si256((__m256i *)out_ptr, group_idxs);
+      out_ptr += block_nrows;
     }
   }
 }
