@@ -66,16 +66,16 @@ template <class T> static inline __m128i load_si128i(T *ptr) {
 }
 
 
-void maddness_encode_fp32_t(const float *X,
-			    int C,
-			    int nsplits,
-			    int nrows,
-			    int ncols,
-			    const uint32_t *splitdims,
-			    const uint8_t *splitvals,
-			    const float *scales,
-			    const float *offsets,
-			    uint8_t* out) {
+static void maddness_encode_fp32_t(const float *X,
+				   int C,
+				   int nsplits,
+				   int nrows,
+				   int ncols,
+				   const uint32_t *splitdims,
+				   const int8_t *splitvals,
+				   const float *scales,
+				   const float *offsets,
+				   uint8_t* out) {
 
   /*
     Inputs:
@@ -186,3 +186,17 @@ void maddness_encode_fp32_t(const float *X,
 }
 
 
+extern "C" {
+  void maddness_encode(const float *X,
+		       int C,
+		       int nsplits,
+		       int nrows,
+		       int ncols,
+		       const uint32_t *splitdims,
+		       const int8_t *splitvals,
+		       const float *scales,
+		       const float *offsets,
+		       uint8_t* out) {
+    maddness_encode_fp32_t(X, C, nsplits, nrows, ncols, splitdims, splitvals, scales, offsets, out);
+  }
+}

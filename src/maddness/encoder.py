@@ -55,7 +55,7 @@ def train_encoder(A_offline: np.ndarray,
 
     if optimize_prototypes:
         dims, vals, scals, offsets = flatten_buckets(buckets, nsplits)
-        a_enc = maddness_encode(A_offline, dims, vals, scals, offsets, 2**nsplits, add_offsets=False)
+        a_enc = maddness_encode(A_offline, C, nsplits, dims, vals, scals, offsets, add_offsets=False)
         a_onehot = sparsify_encoded_A(a_enc, 2**nsplits)
         est = linear_model.Ridge(
             fit_intercept=False, alpha=lamda, solver="auto", copy_X=False

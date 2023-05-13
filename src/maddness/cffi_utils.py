@@ -3,33 +3,23 @@ import os
 from cffi import FFI
 import numpy as np
 
-def load_libmithral():
+def load_libmithral(libpath="src/maddness/cpp/libMithral"):
     global LIBMITHRAL_STATIC
     ffi = FFI()
     cwd = os.getcwd()
-    lib_path = f"{cwd}/third_parties/cl-xMatrix/source/kernel/libMithral"
+    lib_path = f"{cwd}/{libpath}"
 
     ffi.cdef("""
-      void mithral_encode_fp32_t(const float *X,
-			     int64_t nrows,
-			     int ncols,
-			     const uint32_t *splitdims,
-			     const int8_t *all_splitvals,
-			     const float *scales,
-			     const float *offsets,
-			     int ncodebooks,
-			     uint8_t *out);
-    
-     void mithral_scan_fp32_t(const uint8_t* encoded_mat,
-			   int ncodebooks,
-			   int M,
-			   const uint8_t* luts,
-			   uint8_t* out_mat);
-    
-    void mithral_lut_fp32_t(const float *Q, int nrows, int ncols, int ncodebooks,
-                       const float *centroids, float *out_offset_sum,
-                       float *out_scale, float *tmp_lut_f32,
-		       uint8_t *out);
+void maddness_encode(const float *X,
+		     int C,
+		     int nsplits,
+		     int nrows,
+		     int ncols,
+		     const uint32_t *splitdims,
+		     const int8_t *splitvals,
+		     const float *scales,
+		     const float *offsets,
+		     uint8_t* out);
     """)
     LIBMITHRAL_STATIC = ffi.dlopen(f"{lib_path}.dylib")
     return True
@@ -55,20 +45,23 @@ def convert_to_cpp_float(arr):
     return ffi.cast("float*", arr.ctypes.data)
 
 # ncodebooks=16
-def maddness_encode(X, splitdims, splitvals, scales, offsets, ncodebooks, add_offsets=True):
-    out = np.zeros((X.shape[0], ncodebooks), dtype=np.int8, order="F")
-    LIBMITHRAL_STATIC.mithral_encode_fp32_t(convert_to_cpp_float(X),
-                                            X.shape[0],
-                                            X.shape[1],
-                                            convert_to_cpp_uint32(splitdims),
-                                            convert_to_cpp_int8(splitvals),
-                                            convert_to_cpp_float(scales),
-                                            convert_to_cpp_float(offsets),
-                                            ncodebooks,
-                                            convert_to_cpp_uint8(out))
+def maddness_encode(X, C, nsplits, splitdims, splitvals, scales, offsets, add_offsets=True):
+    K = 2**nsplits
+    out = np.zeros((X.shape[0], K), dtype=np.uint8)
+    LIBMITHRAL_STATIC.maddness_encode(convert_to_cpp_float(X),
+                                      C,
+                                      nsplits,
+                                      X.shape[0],
+                                      X.shape[1],
+                                      convert_to_cpp_uint32(splitdims),
+                                      convert_to_cpp_int8(splitvals),
+                                      convert_to_cpp_float(scales),
+                                      convert_to_cpp_float(offsets),
+                                      convert_to_cpp_uint8(out))
     if add_offsets:
-        offsets = np.arange(0, ncodebooks) * ncodebooks
-        out = out.astype(np.int32) + offsets
+        ## Here, astype(np.uint8) may result in:  malloc: Incorrect checksum for freed object 0x7f850fdb3e00: probably modified after being freed.
+        pass#offsets = np.arange(0, K) * K
+        #out = out.astype(np.uint8) + offsets
     return out
 
 def maddness_lut(B, all_prototypes, C, K):

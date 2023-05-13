@@ -338,7 +338,7 @@ def flatten_buckets(buckets: List, nsplits: int):
     
 
     # (size of protos, buckets_per_subspace)
-    split_dim = np.zeros(total_buckets, np.int32)
+    split_dim = np.zeros(total_buckets, np.uint32)
     threshold = np.zeros(total_buckets, np.int8)
     alpha = np.zeros(total_buckets, np.float32)
     beta = np.zeros(total_buckets, np.float32)
