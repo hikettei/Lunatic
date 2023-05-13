@@ -49,6 +49,8 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         # [first trying, second trying, ...]
         # Note: The order indices doesn't correspond with subspace's each rows.
         self.threshold_candidates = []
+
+        self.use_split_dim = 0
         
         self.split_dim = 0
         self.threshold = 0.0
@@ -66,10 +68,13 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         """
 
         """
-
+            
         self.split_dim = dim
         self.threshold = self.threshold_candidates[best_candidate_idx]
-        self.threshold_q, self.alpha, self.beta = learn_quantized_param(self, subspace, dim)
+
+        if self.right_node is None and self.left_node is None:
+            self.use_split_dim = dim
+            self.threshold_q, self.alpha, self.beta = learn_quantized_param(self, subspace, dim)
         ## Reset Params
         self.threshold_candidates = []
 
@@ -307,7 +312,7 @@ def flatten_buckets(buckets: List, nsplits: int):
     beta = np.zeros(total_buckets, np.float32)
     
     def gather_buckets(buck, total_offset, idx=0):
-        split_dim[total_offset + idx] = buck.split_dim
+        split_dim[total_offset + idx] = buck.use_split_dim
         threshold[total_offset + idx] = buck.threshold_q
         alpha[total_offset + idx] = buck.alpha
         beta[total_offset + idx] = buck.beta
@@ -332,8 +337,8 @@ def print_bucket(bucket, sample_proto=None):
         
         for i in range(indent):
             out += " "
-        out += f"<Bucket({b.idx}, {b.tree_level}) N={b.N} dim={b.split_dim} val={b.threshold}>"
-        print(out)
+        out += f"<Bucket({b.idx}, {b.tree_level}) N={b.N} dim={b.use_split_dim} val={b.threshold_q}>"
+        
         if b.left_node is not None:
             print_bucket_col(b.left_node, indent=indent+4)
         if b.right_node is not None:

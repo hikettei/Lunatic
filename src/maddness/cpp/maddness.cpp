@@ -188,6 +188,9 @@ static void maddness_encode_fp32_t(const float *X,
   }
 }
 
+// scan
+
+
 
 extern "C" {
   void maddness_encode(const float *X,
