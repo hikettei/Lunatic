@@ -47,8 +47,8 @@ def convert_to_cpp_float(arr):
 # ncodebooks=16
 def maddness_encode(X, STEP, C, nsplits, splitdims, splitvals, scales, offsets, add_offsets=True):
     K = 2**nsplits
-    out = np.zeros((X.shape[0], STEP), dtype=np.uint8, order="C")
-    LIBMITHRAL_STATIC.maddness_encode(convert_to_cpp_float(X),
+    out = np.zeros((X.shape[0], STEP), dtype=np.uint8, order="C") # Row-major order
+    LIBMITHRAL_STATIC.maddness_encode(convert_to_cpp_float(X), 
                                       C,
                                       nsplits,
                                       X.shape[0],
