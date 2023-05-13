@@ -290,8 +290,8 @@ def _compute_optimal_val_splits(bucket, subspace, dim):
 
     return best_val, sses[best_idx]
 
-
-def flatten_buckets(buckets: List, nsplits: int):
+# Fix it.
+def flatten_buckets1(buckets: List, nsplits: int):
     """
 
     """
@@ -327,3 +327,36 @@ def flatten_buckets(buckets: List, nsplits: int):
         
     gather_buckets(buckets)
     return split_dim.reshape(-1), threshold.reshape(-1), alpha.reshape(-1), beta.reshape(-1)
+
+def flatten_buckets(buckets: List, nsplits: int):
+    """
+
+    """
+    
+    buckets_per_subspace = 2**nsplits
+    total_buckets = buckets_per_subspace * len(buckets)
+    
+
+    # (size of protos, buckets_per_subspace)
+    split_dim = np.zeros(total_buckets, np.int32)
+    threshold = np.zeros(total_buckets, np.int8)
+    alpha = np.zeros(total_buckets, np.float32)
+    beta = np.zeros(total_buckets, np.float32)
+    
+    def gather_buckets(buck, total_offset, local_offset=0):
+        split_dim[total_offset + local_offset] = buck.split_dim
+        threshold[total_offset + local_offset] = buck.threshold_q
+        alpha[total_offset + local_offset] = buck.alpha
+        beta[total_offset + local_offset] = buck.beta
+        
+
+        def explore(sub_bucket):
+            if sub_bucket is not None:
+                gather_buckets(sub_bucket, total_offset, local_offset=sub_bucket.idx)
+                
+        explore(buck.left_node)
+        explore(buck.right_node)
+
+    [gather_buckets(buck, i*buckets_per_subspace) for i, buck in enumerate(buckets)]
+
+    return split_dim, threshold, alpha, beta
