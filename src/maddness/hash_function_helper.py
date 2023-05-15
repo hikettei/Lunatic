@@ -72,7 +72,7 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         self.split_dim = dim
         self.threshold = self.threshold_candidates[best_candidate_idx]
 
-        if self.right_node is None and self.left_node is None:
+        if True:#self.right_node is None and self.left_node is None:
             self.use_split_dim = dim
             self.threshold_q, self.alpha, self.beta = learn_quantized_param(self, subspace, dim)
         ## Reset Params
@@ -232,7 +232,7 @@ B(3, 1)  B(3, 2)   B(3, 3)  B(3, 4)    | nth=2
         """
         if len(self.indices):
             centroid.fill(0.0)
-            centroid[idxs] = X_orig[np.asarray(self.indices)].astype(np.float64).mean(axis=0)
+            centroid[idxs] = X_orig[np.asarray(self.indices)].astype(np.float64).sum(axis=0) / max(1, self.N)
 
             X_error[np.asarray(self.indices)] -= centroid
             # Hash: Proto (C, K) -> np.ndarray(D)

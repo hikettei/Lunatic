@@ -16,5 +16,4 @@ from .hash_function_helper import flatten_buckets
 
 # dylib object.
 LIBMITHRAL_STATIC = None
-LIBMITHRAL_STATIC1 = None
 load_libmithral()
